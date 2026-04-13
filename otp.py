@@ -6,7 +6,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ConversationHandler, MessageHandler, filters, ContextTypes
 
 # ---------- CONFIG ----------
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")  # set this in Render environment variables
+TOKEN = os.environ.get("8639161558:AAG7Wuy-jesOQEnxFpF8bO3mCTTAUYaFdc4")  # set this in Render environment variables
 if not TOKEN:
     raise ValueError("No TELEGRAM_BOT_TOKEN found in environment")
 
